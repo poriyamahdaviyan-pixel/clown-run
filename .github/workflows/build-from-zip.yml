@@ -31,6 +31,7 @@ jobs:
           cp -r "/root/.local/share/godot/export_templates/$V" ~/.local/share/godot/export_templates/
           if [ ! -f /root/debug.keystore ]; then keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore /root/debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12; fi
           ls -la /root/debug.keystore
+          keytool -keyalg RSA -keysize 2048 -genkeypair -alias clownrun -keypass clownrun123 -keystore build/release.keystore -storepass clownrun123 -dname "CN=ClownRun,O=ClownRun,C=US" -validity 9999 -deststoretype pkcs12
           godot -e --headless --quit || true
           F=$(ls ~/.config/godot/editor_settings-4*.tres | head -1)
           J=$(dirname "$(dirname "$(readlink -f "$(which javac)")")")
