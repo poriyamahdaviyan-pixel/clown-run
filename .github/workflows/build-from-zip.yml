@@ -1,0 +1,56 @@
+
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract game
+        run: unzip -q godot_project.zip
+
+      - name: Prepare Android
+        working-directory: godot_project
+        run: |
+          mkdir -p ~/.config/godot build
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore /root/debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+          godot -e --headless --quit
+          F=$(ls ~/.config/godot/editor_settings-4*.tres | head -1)
+          echo 'export/android/debug_keystore = "/root/debug.keystore"' >> "$F"
+          echo 'export/android/debug_keystore_user = "androiddebugkey"' >> "$F"
+          echo 'export/android/debug_keystore_pass = "android"' >> "$F"
+          echo 'export/android/android_sdk_path = "/usr/lib/android-sdk"' >> "$F"
+
+      - name: Build APK
+        working-directory: godot_project
+        run: godot --headless --export-debug "Android Public" build/coin-runner.apk
+
+      - name: Build Patch
+        working-directory: godot_project
+        run: godot --headless --export-pack "Patch" build/patch.pck
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coin-runner-build
+          path: |
+            godot_project/build/coin-runner.apk
+            godot_project/build/patch.pck
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          files: |
+            godot_project/build/coin-runner.apk
+            godot_project/build/patch.pck
