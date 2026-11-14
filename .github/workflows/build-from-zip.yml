@@ -29,7 +29,8 @@ jobs:
           V=$(ls /root/.local/share/godot/export_templates | head -1)
           echo "templates: $V"
           cp -r "/root/.local/share/godot/export_templates/$V" ~/.local/share/godot/export_templates/
-          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore /root/debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+          if [ ! -f /root/debug.keystore ]; then keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore /root/debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12; fi
+          ls -la /root/debug.keystore
           godot -e --headless --quit || true
           F=$(ls ~/.config/godot/editor_settings-4*.tres | head -1)
           echo 'export/android/debug_keystore = "/root/debug.keystore"' >> "$F"
