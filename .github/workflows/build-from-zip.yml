@@ -23,6 +23,7 @@ jobs:
         working-directory: godot_project
         run: |
           mkdir -p ~/.config/godot build
+          rm -f /root/debug.keystore
           keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore /root/debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
           godot -e --headless --quit
           F=$(ls ~/.config/godot/editor_settings-4*.tres | head -1)
