@@ -1,74 +1,56 @@
-
-name: Build Android APK
-
-on:
-  workflow_dispatch:
-
+name: Build Android APK (zip)
+on: [workflow_dispatch]
 permissions:
   contents: write
-
 jobs:
   apk:
     runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:4.3
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Extract game
-        run: unzip -q godot_project.zip
-
-      - name: Configure Android
+      - uses: actions/checkout@v4
+      - name: Unzip project
         run: |
-          set -eux
-          echo "HOME=$HOME"
-          echo "JAVA_HOME=$JAVA_HOME"
-
-          mkdir -p "$HOME/.config/godot"
-          mkdir -p "$HOME/.local/share/godot/export_templates/4.3.stable"
-
-          cp -a /root/.local/share/godot/export_templates/4.3.stable/. "$HOME/.local/share/godot/export_templates/4.3.stable/"
-
-          cat > "$HOME/.config/godot/editor_settings-4.3.tres" <<EOF
-          [gd_resource type="EditorSettings" format=3]
-          [resource]
-          export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
-          export/android/android_sdk_path = "/usr/lib/android-sdk"
-          export/android/debug_keystore = "/root/debug.keystore"
-          export/android/debug_keystore_user = "androiddebugkey"
-          export/android/debug_keystore_pass = "android"
-          EOF
-
-          test -x /usr/lib/jvm/java-17-openjdk-amd64/bin/java
-          test -f /root/debug.keystore
-          test -f "$HOME/.local/share/godot/export_templates/4.3.stable/android_debug.apk"
-          test -f "$HOME/.local/share/godot/export_templates/4.3.stable/android_release.apk"
-
-      - name: Build APK
-        working-directory: godot_project
+          (command -v unzip >/dev/null) || (apt-get update -qq && apt-get install -y -qq unzip)
+          ls -la
+          Z=$(ls *.zip | head -1)
+          echo "zip: $Z"
+          mkdir -p tmp_unz
+          unzip -q -o "$Z" -d tmp_unz
+          P=$(dirname "$(find tmp_unz -name project.godot | head -1)")
+          echo "project dir: $P"
+          mv "$P" game
+          ls game
+      - name: Prepare
+        working-directory: game
         run: |
-          mkdir -p build
-          godot --headless --export-debug "Android Public" build/coin-runner.apk
-
-      - name: Build Patch
-        working-directory: godot_project
+          mkdir -p ~/.local/share/godot/export_templates ~/.config/godot build
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore /root/debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+          godot -e --headless --quit || true
+          F=$(ls ~/.config/godot/editor_settings-4*.tres | head -1)
+          echo 'export/android/debug_keystore = "/root/debug.keystore"' >> "$F"
+          echo 'export/android/debug_keystore_user = "androiddebugkey"' >> "$F"
+          echo 'export/android/debug_keystore_pass = "android"' >> "$F"
+          echo 'export/android/android_sdk_path = "/usr/lib/android-sdk"' >> "$F"
+          godot --headless --import || true
+      - name: Export APK
+        working-directory: game
+        run: godot --headless --export-debug "Android Public" build/coin-runner.apk
+      - name: Export patch
+        working-directory: game
         run: godot --headless --export-pack "Patch" build/patch.pck
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: coin-runner-build
           path: |
-            godot_project/build/coin-runner.apk
-            godot_project/build/patch.pck
-
-      - name: Create Release
+            game/build/coin-runner.apk
+            game/build/patch.pck
+      - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: Build ${{ github.run_number }}
           files: |
-            godot_project/build/coin-runner.apk
-            godot_project/build/patch.pck
+            game/build/coin-runner.apk
+            game/build/patch.pck
