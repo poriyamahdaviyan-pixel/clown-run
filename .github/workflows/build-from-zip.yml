@@ -14,47 +14,52 @@ jobs:
       image: barichello/godot-ci:4.3
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install tools
+      - name: Install Android SDK components
         run: |
-          apt-get update
-          apt-get install -y curl unzip
+          export ANDROID_HOME=/usr/lib/android-sdk
+          export PATH="$ANDROID_HOME/cmdline-tools/cmdline-tools/bin:$PATH"
+          yes | sdkmanager --licenses
+          sdkmanager --sdk_root="$ANDROID_HOME" \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
 
       - name: Extract game
-        run: unzip -q godot_project.zip
-
-      - name: Install export templates
         run: |
-          mkdir -p "$HOME/.local/share/godot/export_templates/4.3.stable"
-          curl -fL "https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz" -o /tmp/templates.tpz
-          mkdir -p /tmp/godot-templates
-          unzip -q /tmp/templates.tpz -d /tmp/godot-templates
-          cp -r /tmp/godot-templates/templates/. "$HOME/.local/share/godot/export_templates/4.3.stable/"
+          unzip -q godot_project.zip
 
-      - name: Prepare Android
-        working-directory: godot_project
+      - name: Configure Godot Android
         run: |
-          mkdir -p ~/.config/godot build
-          rm -f "$HOME/debug.keystore"
-          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore "$HOME/debug.keystore" -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
-          godot -e --headless --quit
-          F=$(ls ~/.config/godot/editor_settings-4*.tres | head -1)
-          echo "export/android/debug_keystore = \"$HOME/debug.keystore\"" >> "$F"
-          echo 'export/android/debug_keystore_user = "androiddebugkey"' >> "$F"
-          echo 'export/android/debug_keystore_pass = "android"' >> "$F"
-          echo 'export/android/android_sdk_path = "/usr/lib/android-sdk"' >> "$F"
-          echo "export/android/java_sdk_path = \"$JAVA_HOME\"" >> "$F"
+          mkdir -p /root/.config/godot
+          cat > /root/.config/godot/editor_settings-4.3.tres <<'EOF'
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
+          export/android/android_sdk_path = "/usr/lib/android-sdk"
+          export/android/debug_keystore = "/root/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          test -x /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+          test -d /usr/lib/android-sdk/build-tools/34.0.0
+          test -f /root/debug.keystore
 
       - name: Build APK
         working-directory: godot_project
-        run: godot --headless --export-debug "Android Public" build/coin-runner.apk
+        run: |
+          mkdir -p build
+          godot --headless --export-debug "Android Public" build/coin-runner.apk
 
       - name: Build Patch
         working-directory: godot_project
-        run: godot --headless --export-pack "Patch" build/patch.pck
+        run: |
+          godot --headless --export-pack "Patch" build/patch.pck
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: coin-runner-build
           path: |
