@@ -33,10 +33,14 @@ jobs:
           ls -la /root/debug.keystore
           godot -e --headless --quit || true
           F=$(ls ~/.config/godot/editor_settings-4*.tres | head -1)
+          J=$(dirname "$(dirname "$(readlink -f "$(which javac)")")")
+          echo "java: $J"
+          echo "sdk:" && ls /usr/lib/android-sdk || true
           echo 'export/android/debug_keystore = "/root/debug.keystore"' >> "$F"
           echo 'export/android/debug_keystore_user = "androiddebugkey"' >> "$F"
           echo 'export/android/debug_keystore_pass = "android"' >> "$F"
           echo 'export/android/android_sdk_path = "/usr/lib/android-sdk"' >> "$F"
+          echo "export/android/java_sdk_path = \"$J\"" >> "$F"
           godot --headless --import || true
       - name: Export APK
         working-directory: game
