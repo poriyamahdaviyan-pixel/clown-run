@@ -28,3 +28,4 @@
           test -f "$HOME/.local/share/godot/export_templates/4.3.stable/android_release.apk"
 
           ls -lh "$HOME/.local/share/godot/export_templates/4.3.stable/"
+          
