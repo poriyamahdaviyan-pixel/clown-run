@@ -1,40 +1,18 @@
 
-name: Build Android APK
-
-on:
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
-jobs:
-  apk:
-    runs-on: ubuntu-latest
-    container:
-      image: barichello/godot-ci:4.3
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Android SDK components
-        run: |
-          export ANDROID_HOME=/usr/lib/android-sdk
-          export PATH="$ANDROID_HOME/cmdline-tools/cmdline-tools/bin:$PATH"
-          yes | sdkmanager --licenses
-          sdkmanager --sdk_root="$ANDROID_HOME" \
-            "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0"
-
-      - name: Extract game
-        run: |
-          unzip -q godot_project.zip
-
       - name: Configure Godot Android
         run: |
-          mkdir -p /root/.config/godot
-          cat > /root/.config/godot/editor_settings-4.3.tres <<'EOF'
+          set -eux
+
+          echo "HOME=$HOME"
+          echo "JAVA_HOME=$JAVA_HOME"
+
+          mkdir -p "$HOME/.config/godot"
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.3.stable"
+
+          cp -a /root/.local/share/godot/export_templates/4.3.stable/. \
+            "$HOME/.local/share/godot/export_templates/4.3.stable/"
+
+          cat > "$HOME/.config/godot/editor_settings-4.3.tres" <<EOF
           [gd_resource type="EditorSettings" format=3]
           [resource]
           export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
@@ -43,34 +21,10 @@ jobs:
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           EOF
+
           test -x /usr/lib/jvm/java-17-openjdk-amd64/bin/java
-          test -d /usr/lib/android-sdk/build-tools/34.0.0
           test -f /root/debug.keystore
+          test -f "$HOME/.local/share/godot/export_templates/4.3.stable/android_debug.apk"
+          test -f "$HOME/.local/share/godot/export_templates/4.3.stable/android_release.apk"
 
-      - name: Build APK
-        working-directory: godot_project
-        run: |
-          mkdir -p build
-          godot --headless --export-debug "Android Public" build/coin-runner.apk
-
-      - name: Build Patch
-        working-directory: godot_project
-        run: |
-          godot --headless --export-pack "Patch" build/patch.pck
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: coin-runner-build
-          path: |
-            godot_project/build/coin-runner.apk
-            godot_project/build/patch.pck
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: build-${{ github.run_number }}
-          name: Build ${{ github.run_number }}
-          files: |
-            godot_project/build/coin-runner.apk
-            godot_project/build/patch.pck
+          ls -lh "$HOME/.local/share/godot/export_templates/4.3.stable/"
