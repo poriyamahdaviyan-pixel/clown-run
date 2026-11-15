@@ -20,6 +20,7 @@ jobs:
           P=$(dirname "$(find tmp_unz -name project.godot | head -1)")
           echo "project dir: $P"
           mv "$P" game
+          if [ -s update_key.pub ]; then cp update_key.pub game/update_key.pub; echo "update key installed"; else echo "NO update_key.pub"; fi
           ls game
       - name: Prepare
         working-directory: game
