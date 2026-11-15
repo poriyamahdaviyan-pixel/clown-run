@@ -4,7 +4,8 @@ permissions:
   contents: write
 env:
   APP_NAME: "فرار از دلقک"
-  APK_NAME: "clown-run"
+  APK_NAME: "coin-runner"
+  BUILD_CODE: "2"
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -26,7 +27,10 @@ jobs:
           if [ -s update_key.pub ]; then cp update_key.pub game/update_key.pub; echo "update key installed"; else echo "NO update_key.pub"; fi
           sed -i "s|^package/name=.*|package/name=\"$APP_NAME\"|" game/export_presets.cfg
           sed -i "s|^config/name=.*|config/name=\"$APP_NAME\"|" game/project.godot
-          grep -n "package/name\|config/name" game/export_presets.cfg game/project.godot
+          sed -i "s|^const BUILD := .*|const BUILD := $BUILD_CODE|" game/scripts/updater.gd
+          sed -i "s|^version/code=.*|version/code=$BUILD_CODE|" game/export_presets.cfg
+          grep -n "^const BUILD" game/scripts/updater.gd
+          grep -n "package/name\|config/name\|version/code" game/export_presets.cfg game/project.godot
           ls game
       - name: Prepare
         working-directory: game
