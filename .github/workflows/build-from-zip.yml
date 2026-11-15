@@ -4,7 +4,7 @@ permissions:
   contents: write
 env:
   APP_NAME: "فرار از دلقک"
-  APK_NAME: "فرار از دلقک"
+  APK_NAME: "clown-run"
 jobs:
   apk:
     runs-on: ubuntu-latest
