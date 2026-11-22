@@ -4,7 +4,7 @@ permissions:
   contents: write
 env:
   APP_NAME: "فرار از دلقک"
-  APK_NAME: "coin-runner"
+  APK_NAME: "clown-run"
   BUILD_CODE: "2"
 jobs:
   apk:
